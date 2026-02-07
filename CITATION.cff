@@ -6,8 +6,8 @@ authors:
     given-names: "Stéphan"
 doi: 10.5281/zenodo.17512919
 license: MIT
-url: "https://github.com/stephantulkens/pynife"
-repository-code: "https://github.com/stephantulkens/pynife"
+url: "https://github.com/stephantul/pynife"
+repository-code: "https://github.com/stephantul/pynife"
 date-released: "2025-11-03"
 
 preferred-citation:
@@ -19,5 +19,5 @@ preferred-citation:
   year: 2025
   publisher: Zenodo
   doi: 10.5281/zenodo.17512919
-  url: "https://github.com/stephantulkens/pynife"
+  url: "https://github.com/stephantul/pynife"
   license: MIT
