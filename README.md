@@ -218,7 +218,7 @@ If you use `pynife` or NIFE models in general, please cite this work as follows:
   year         = {2025},
   publisher    = {Zenodo},
   doi          = {10.5281/zenodo.17512919},
-  url          = {https://github.com/stephantulkens/pynife},
+  url          = {https://github.com/stephantul/pynife},
   license      = {MIT},
 }
 ```
