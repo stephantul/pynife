@@ -1,5 +1,3 @@
-from typing import List
-
 from skeletoken import TokenizerModel
 from transformers import PreTrainedTokenizerFast
 
@@ -46,8 +44,8 @@ def test_expand_adds_and_filters(test_tokenizer: PreTrainedTokenizerFast) -> Non
 
     data: list[VocabItem] = [
         {"token": "12345", "frequency": 1000},
-        {"token": "hello_new", "frequency": 500},
-        {"token": "world_new", "frequency": 400},
+        {"token": "hellonew", "frequency": 500},
+        {"token": "worldnew", "frequency": 400},
     ]
 
     # Adding tokens without filtering should allow non-numeric tokens to be added
@@ -56,7 +54,7 @@ def test_expand_adds_and_filters(test_tokenizer: PreTrainedTokenizerFast) -> Non
     )
     new_vocab = new_tokenizer.get_vocab()
     assert isinstance(new_tokenizer, PreTrainedTokenizerFast)
-    assert "hello_new" in new_vocab or "world_new" in new_vocab
+    assert "hellonew" in new_vocab or "worldnew" in new_vocab
 
     # With filtering enabled, numeric token should not be added
     new_tokenizer2 = expand_tokenizer(
@@ -72,7 +70,7 @@ def test_add_tokens_noop_when_target_reached(test_tokenizer: PreTrainedTokenizer
     model = TokenizerModel.from_transformers_tokenizer(tokenizer)
     orig_size = model.vocabulary_size
 
-    dataset: List[VocabItem] = [{"token": "x", "frequency": 1}, {"token": "y", "frequency": 2}]
+    dataset: list[VocabItem] = [{"token": "x", "frequency": 1}, {"token": "y", "frequency": 2}]
     returned = _add_tokens_to_tokenizer(model, dataset=dataset, filter_numbers=False, new_vocab_size=orig_size)
     assert isinstance(returned, TokenizerModel)
     assert returned.vocabulary_size == orig_size
@@ -84,9 +82,9 @@ def test_add_tokens_adds_non_numeric(test_tokenizer: PreTrainedTokenizerFast) ->
     model = TokenizerModel.from_transformers_tokenizer(tokenizer)
     orig_size = model.vocabulary_size
 
-    data: List[VocabItem] = [
-        {"token": "token_one", "frequency": 10},
-        {"token": "token_two", "frequency": 5},
+    data: list[VocabItem] = [
+        {"token": "tokenone", "frequency": 10},
+        {"token": "tokentwo", "frequency": 5},
         {"token": "1234", "frequency": 20},
     ]
     returned = _add_tokens_to_tokenizer(model, dataset=data, filter_numbers=True, new_vocab_size=orig_size + 2)
@@ -100,7 +98,7 @@ def test_add_tokens_filter_all_numbers(test_tokenizer: PreTrainedTokenizerFast) 
     model = TokenizerModel.from_transformers_tokenizer(tokenizer)
     orig_size = model.vocabulary_size
 
-    data: List[VocabItem] = [{"token": "123", "frequency": 10}, {"token": "456", "frequency": 5}]
+    data: list[VocabItem] = [{"token": "123", "frequency": 10}, {"token": "456", "frequency": 5}]
     returned = _add_tokens_to_tokenizer(model, dataset=data, filter_numbers=True, new_vocab_size=orig_size + 2)
     assert isinstance(returned, TokenizerModel)
     assert returned.vocabulary_size == orig_size
@@ -115,7 +113,7 @@ def test_add_tokens_skips_existing_tokens(test_tokenizer: PreTrainedTokenizerFas
     # pick an existing token from the underlying tokenizer vocabulary
     hf_vocab = tokenizer.get_vocab()
     existing = next(iter(hf_vocab.keys()))
-    data: List[VocabItem] = [{"token": existing, "frequency": 100}, {"token": "brand_new_token", "frequency": 50}]
+    data: list[VocabItem] = [{"token": existing, "frequency": 100}, {"token": "brandnewtoken", "frequency": 50}]
 
     returned = _add_tokens_to_tokenizer(model, dataset=data, filter_numbers=False, new_vocab_size=orig_size + 1)
     assert isinstance(returned, TokenizerModel)
@@ -129,7 +127,7 @@ def test_expand_invokes_prune_branch(test_tokenizer: PreTrainedTokenizerFast) ->
     original_vocab = tokenizer.get_vocab()
     original_size = len(original_vocab)
 
-    data: List[VocabItem] = [{"token": "a", "frequency": 1}, {"token": "b", "frequency": 1}]
+    data: list[VocabItem] = [{"token": "a", "frequency": 1}, {"token": "b", "frequency": 1}]
 
     # Set new_vocab_size to current size so no tokens are added; this ensures
     # expand_tokenizer will call _prune_tokenizer (min_subword_frequency > 0)

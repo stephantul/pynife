@@ -65,7 +65,7 @@ def sanitize_model_name(model_name: str) -> str:
 
 
 def main() -> None:
-    """Main function to run inference on multiple datasets."""
+    """Run inference on multiple datasets."""
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -109,8 +109,6 @@ def main() -> None:
             max_length=args.max_length,
             model_name=args.model_name,
             dataset_name=full_name,
-            lowercase=args.lowercase,
-            make_greedy=args.make_greedy,
         )
 
 

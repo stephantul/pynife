@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Iterable, Iterator
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TypeVar
@@ -8,9 +9,8 @@ from typing import TypeVar
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
-from skeletoken import TokenizerModel
 from tqdm import tqdm
-from transformers import BatchEncoding, PreTrainedTokenizerBase, PreTrainedTokenizerFast
+from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 from pynife.data import build_parquet_shards_from_folder
 from pynife.utilities import batchify
@@ -49,8 +49,7 @@ def _write_data(path: Path, pooled: list[torch.Tensor], records: list[dict[str, 
 def _tokenize(
     strings: list[str], tokenizer: PreTrainedTokenizerBase, max_length: int
 ) -> tuple[BatchEncoding, list[str]]:
-    """
-    Tokenize a list of strings using a HuggingFace tokenizer.
+    """Tokenize a list of strings using a HuggingFace tokenizer.
 
     This is mainly a helper function; it also returns the truncated strings, so that we don't have to
     re-tokenize them later to find out how they were truncated.
@@ -79,22 +78,19 @@ def _tokenize(
     # Where the final dimension is start, end indices. So by taking the max end index
     # we know the length to which the tokenizer tokenized the string.
     lengths = np.asarray(offset_mapping)[:, :, 1].max(axis=1)
-    return tokenized, [string[:length] for string, length in zip(strings, lengths)]
+    return tokenized, [string[:length] for string, length in zip(strings, lengths, strict=False)]
 
 
 def _generate_embeddings(
     model: SentenceTransformer,
-    records: Iterator[dict[str, str]],
+    records: Iterator[dict[str, str]] | Iterable[dict[str, str]],
     output_dir: str | Path,
     batch_size: int = 96,
     max_length: int = 512,
     save_every: int = 8192,
     limit_batches: int | None = None,
-    lowercase: bool = True,
-    make_greedy: bool = True,
 ) -> None:
-    """
-    Generate embeddings for a stream of texts using a SentenceTransformer model.
+    """Generate embeddings for a stream of texts using a SentenceTransformer model.
 
     This is mainly used as an inner loop for the knowledge distillation process.
     We get N texts, and create embeddings for them using the teacher model.
@@ -110,8 +106,6 @@ def _generate_embeddings(
         max_length: The maximum sequence length for tokenization. Defaults to 512.
         save_every: Save intermediate results every N batches. Defaults to 8192.
         limit_batches: An optional limit on the number of batches to process.
-        lowercase: Whether to lowercase the tokenizer.
-        make_greedy: Whether to make the tokenizer greedy.
 
     """
     model.eval()
@@ -123,21 +117,13 @@ def _generate_embeddings(
     all_pooled, accumulated_records = [], []
     tokenizer: PreTrainedTokenizerBase = model.tokenizer
 
-    if lowercase and isinstance(tokenizer, PreTrainedTokenizerFast):
-        tokenizer_model = TokenizerModel.from_transformers_tokenizer(tokenizer)
-        tokenizer_model = tokenizer_model.decase_vocabulary()
-        tokenizer = tokenizer_model.to_transformers()
-    if make_greedy and isinstance(tokenizer, PreTrainedTokenizerFast):
-        tokenizer_model = TokenizerModel.from_transformers_tokenizer(tokenizer)
-        tokenizer_model = tokenizer_model.make_model_greedy()
-        tokenizer = tokenizer_model.to_transformers()
-
     original_max_length = model[0].max_seq_length
     assert original_max_length is not None
     assert isinstance(original_max_length, int)
     if max_length > original_max_length:
         logger.warning(
-            f"Warning: max_length {max_length} is greater than the model's max_length {original_max_length}. Not changing it."
+            f"Warning: max_length {max_length} is greater than the model's max_length {original_max_length}. "
+            "Not changing it."
         )
     else:
         model[0].max_seq_length = max_length  # type: ignore[assignment]
@@ -153,7 +139,7 @@ def _generate_embeddings(
             out = model(features_dict)
             pooled = out["sentence_embedding"].cpu()
 
-            for record, truncated in zip(batch, truncated_strings):
+            for record, truncated in zip(batch, truncated_strings, strict=False):
                 record["truncated"] = truncated
 
                 accumulated_records.append(record)
@@ -177,21 +163,32 @@ def _generate_embeddings(
         _write_data(path, all_pooled, accumulated_records, shards_saved)
 
 
+def _workdir(temp_folder: str | None) -> AbstractContextManager[str]:
+    """Create a temp folder if needed. For <= 3.11 temporary directories."""
+    if temp_folder is None:
+        return TemporaryDirectory()
+    Path(temp_folder).mkdir(parents=True, exist_ok=True)
+    return nullcontext(temp_folder)
+
+
 def generate_and_save_embeddings(
     model: SentenceTransformer,
     model_name: str,
     dataset_name: str,
     output_folder: str | Path,
-    records: Iterator[dict[str, str]],
+    records: Iterator[dict[str, str]] | Iterable[dict[str, str]],
+    temp_folder: str | None = None,
     limit_batches: int | None = None,
     batch_size: int = 512,
     save_every: int = 256,
     max_length: int = 512,
-    lowercase: bool = True,
-    make_greedy: bool = True,
 ) -> None:
-    """Run inference and save the results to parquet shards."""
-    with TemporaryDirectory() as dir_name:
+    """Run inference and save the results to parquet shards.
+
+    This runs inference over an iterable or iterator of records. Each record is a dictionary with
+    at the very least a "text" key, which is the field that will be featurized.
+    """
+    with _workdir(temp_folder) as dir_name:
         _generate_embeddings(
             model,
             records,
@@ -200,8 +197,6 @@ def generate_and_save_embeddings(
             save_every=save_every,
             limit_batches=limit_batches,
             max_length=max_length,
-            lowercase=lowercase,
-            make_greedy=make_greedy,
         )
 
         logger.info("Converting dataset to shards...")

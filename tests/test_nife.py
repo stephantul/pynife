@@ -1,8 +1,10 @@
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from sentence_transformers import SentenceTransformer
+from sentence_transformers.models import Module, Normalize
 
 from pynife.nife import load_as_router
 from pynife.utilities import get_teacher_from_metadata
@@ -37,8 +39,8 @@ class DummyRouter:
         self.d = d
 
 
-def test_get_teacher_from_metadata_local(tmp_path) -> None:
-    """Ensure that when a local model path contains a README, the function extracts the `base_model` value from the ModelCard."""
+def test_get_teacher_from_metadata_local(tmp_path: Path) -> None:
+    """Ensure that when a local model path contains a README, the function extracts the `base_model` value."""
     # Create a fake README.md and ensure ModelCard.load reads it
     readme = tmp_path / "README.md"
     readme.write_text("base_model: test-teacher\n")
@@ -53,8 +55,8 @@ def test_get_teacher_from_metadata_local(tmp_path) -> None:
         assert teacher == "teacher-model"
 
 
-def test_get_teacher_from_metadata_remote_hf_success(tmp_path) -> None:
-    """When given a remote repo id, the function should call the HF API to download the README and extract `base_model` from it."""
+def test_get_teacher_from_metadata_remote_hf_success(tmp_path: Path) -> None:
+    """The function should call the HF API to download the README and extract `base_model`."""
     # Simulate hf_hub_download returning a README path
     fake_readme = tmp_path / "remote_README.md"
     fake_readme.write_text("dummy")
@@ -85,7 +87,7 @@ def test_get_teacher_from_metadata_remote_hf_not_found() -> None:
             get_teacher_from_metadata("owner/nonexistent")
 
 
-def test_get_teacher_from_metadata_missing_base_model(tmp_path) -> None:
+def test_get_teacher_from_metadata_missing_base_model(tmp_path: Path) -> None:
     """If the README/ModelCard contains no `base_model` field, the function should raise ValueError."""
     # Local README but ModelCard has no base_model
     readme = tmp_path / "README.md"
@@ -96,16 +98,19 @@ def test_get_teacher_from_metadata_missing_base_model(tmp_path) -> None:
             get_teacher_from_metadata(tmp_path)
 
 
-def test_load_nife_success(test_model) -> None:
-    """Load a student and teacher with matching embedding dimensions and verify the composed SentenceTransformer is returned."""
+def test_load_nife_success(test_model: SentenceTransformer) -> None:
+    """Load a student and teacher verify the composed SentenceTransformer is returned."""
     # Use the provided test_model as the small student model.
     # Monkeypatch get_teacher_from_metadata to return a fake teacher name.
     fake_get_teacher = lambda name, base_model: "teacher-name"
 
     # Provide a fake teacher SentenceTransformer object with matching dimension
     class TeacherLike:
-        def get_sentence_embedding_dimension(self) -> int:
+        def get_sentence_embedding_dimension(self) -> int | None:
             return test_model.get_sentence_embedding_dimension()
+
+        def __iter__(self) -> Iterator[Module]:
+            return iter([Normalize()])
 
     teacher = TeacherLike()
 
@@ -125,21 +130,23 @@ def test_load_nife_success(test_model) -> None:
         patch("pynife.nife.SentenceTransformer", new=sentence_transformer_loader),
         patch(
             "pynife.nife.Router.for_query_document",
-            new=staticmethod(lambda query_modules, document_modules: DummyRouter(query_modules, document_modules)),
+            new=staticmethod(
+                lambda query_modules, document_modules, default_route: DummyRouter(query_modules, document_modules)
+            ),
         ),
     ):
         model = load_as_router("small-model")
         assert model == "composed-model"
 
 
-def test_load_nife_dimensionality_mismatch(test_model) -> None:
+def test_load_nife_dimensionality_mismatch(test_model: SentenceTransformer) -> None:
     """If teacher and student embedding dimensionalities differ, load_nife should raise a ValueError."""
     # teacher has different dimension than the test_model student
     fake_get_teacher = lambda name, base_model: "teacher-name"
 
     class BadTeacher:
         def get_sentence_embedding_dimension(self) -> int:
-            return test_model.get_sentence_embedding_dimension() + 1
+            return (test_model.get_sentence_embedding_dimension() or 0) + 1
 
     def sentence_transformer_loader(name_or_modules: object | None = None, *a: object, **k: object) -> object:
         return BadTeacher() if name_or_modules == "teacher-name" else test_model

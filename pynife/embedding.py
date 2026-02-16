@@ -61,7 +61,7 @@ class TrainableStaticEmbedding(StaticEmbedding):
         embedding_dim: int | None = None,
         **kwargs: Any,
     ) -> None:
-        """Static embedding layer."""
+        """Initialize static embedding layer."""
         super().__init__(tokenizer, embedding_weights, embedding_dim, **kwargs)
         self._max_seq_length = 512
 

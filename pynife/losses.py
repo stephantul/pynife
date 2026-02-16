@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from enum import Enum
-from typing import Sequence
 
 import torch
 import torch.nn.functional as F
@@ -52,8 +52,10 @@ def select_loss(name: str | LossFunction) -> type[nn.Module]:
     """Select loss function by name."""
     try:
         function = LossFunction(name)
-    except ValueError:
-        raise ValueError(f"Unknown loss function: {name}, available options are: {[e.value for e in LossFunction]}")
+    except ValueError as e:
+        raise ValueError(
+            f"Unknown loss function: {name}, available options are: {[e.value for e in LossFunction]}"
+        ) from e
     match function:
         case LossFunction.COSINE:
             return CosineLoss

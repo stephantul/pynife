@@ -38,7 +38,7 @@ def batchify(stream: Iterator[T] | Iterable[T], batch_size: int) -> Iterator[lis
 
 
 def get_teacher_from_metadata(path: str | Path, key: str = "base_model") -> str:
-    """Gets metadata file for a given model or dataset from the Hugging Face Hub or a local path."""
+    """Get metadata file for a given model or dataset from the Hugging Face Hub or a local path."""
     path = Path(path)
     if path.exists() and path.is_dir():
         readme_path = str(path / "README.md")

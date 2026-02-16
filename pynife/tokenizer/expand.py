@@ -33,19 +33,15 @@ def _prune_tokenizer(
         token_counts = [item["frequency"] for item in batch]
 
         tokenized = tokenizer_object.encode_batch_fast(token_strings, add_special_tokens=False)
-        for encoding, count in zip(tokenized, token_counts):
+        for encoding, count in zip(tokenized, token_counts, strict=False):
             counts = np.bincount(encoding.ids, minlength=old_vocab_size)
             original_vocab_counts += counts * count
 
     vocab_to_remove = original_vocab_counts < min_subword_frequency
 
     vocabulary = {index: token for token, index in tokenizer_model.vocabulary.items()}
-    for id in np.flatnonzero(vocab_to_remove):
-        token = vocabulary[id]
-        # Prevent removing tokens if that would empty the vocabulary
-        if tokenizer_model.vocabulary_size == 1:
-            break
-        tokenizer_model.remove_token_from_vocabulary(token)
+    tokens_to_remove = [vocabulary[index] for index in np.flatnonzero(vocab_to_remove)]
+    tokenizer_model = tokenizer_model.remove_tokens_from_vocabulary(tokens_to_remove)
 
     logger.info("Removed %d tokens from vocabulary.", np.sum(vocab_to_remove))
     return tokenizer_model
@@ -73,7 +69,7 @@ def _add_tokens_to_tokenizer(
             break
         if token in tokenizer_model.vocabulary:
             continue
-        tokenizer_model.add_token_to_vocabulary(token)
+        tokenizer_model = tokenizer_model.add_token_to_vocabulary(token)
         tokens_added += 1
 
     return tokenizer_model
@@ -86,8 +82,7 @@ def expand_tokenizer(
     new_vocab_size: int,
     filter_numbers: bool,
 ) -> PreTrainedTokenizerFast:
-    """
-    Expand a tokenizer's vocabulary by counting frequencies.
+    """Expand a tokenizer's vocabulary by counting frequencies.
 
     Args:
         tokenizer: The tokenizer to expand.

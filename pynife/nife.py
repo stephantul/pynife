@@ -5,8 +5,7 @@ from pynife.utilities import get_teacher_from_metadata
 
 
 def load_as_router(name: str, teacher_name: str | None = None) -> SentenceTransformer:
-    """
-    Load a SentenceTransformer model from the Hugging Face Hub.
+    """Load a SentenceTransformer model from the Hugging Face Hub.
 
     Args:
         name: The name of the model to load.
@@ -33,5 +32,9 @@ def load_as_router(name: str, teacher_name: str | None = None) -> SentenceTransf
             "Please check that you have the correct teacher model."
         )
 
-    router = Router.for_query_document(query_modules=[small_model], document_modules=[big_model])  # type: ignore
+    router = Router.for_query_document(
+        query_modules=list(small_model),  # type: ignore  # BOOO
+        document_modules=list(big_model),  # type: ignore  # BOOO
+        default_route="query",
+    )
     return SentenceTransformer(modules=[router])

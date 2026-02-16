@@ -10,7 +10,7 @@ def _simple_text_field_dataset(
     config: str | None = None,
     split: str = "train",
 ) -> Iterator[dict[str, str]]:
-    """Helper function for datasets that extract a single text field."""
+    """Extract single text field."""
     dataset = cast(Dataset, load_dataset(huggingface_name, config, split=split))
 
     new_records: list[dict[str, str]] = []
@@ -18,12 +18,11 @@ def _simple_text_field_dataset(
         text = record[text_field]
         new_records.append({"text": text})
 
-    return cast(Iterator[dict[str, str]], iter(new_records))
+    return iter(new_records)
 
 
 def english_words_definitions_dataset() -> tuple[str, str, Iterator[dict[str, str]]]:
-    """
-    Get the English Words Definitions dataset.
+    """Get the English Words Definitions dataset.
 
     Returns a tuple of (descriptive_name, huggingface_name, iterator).
     """
@@ -101,7 +100,7 @@ def snli_dataset() -> tuple[str, str, Iterator[dict[str, str]]]:
             seen.add(text)
             new_records.append({"text": text})
 
-    dataset_iterator = cast(Iterator[dict[str, str]], iter(new_records))
+    dataset_iterator = iter(new_records)
     return name, hf, dataset_iterator
 
 
@@ -216,8 +215,7 @@ def get_all_dataset_functions() -> dict[str, Callable[[], tuple[str, str, Iterat
 
 
 def short_dataset_name(hf_name: str) -> str:
-    """
-    Return the short dataset name from a HF hub identifier.
+    """Return the short dataset name from a HF hub identifier.
 
     Examples:
         - 'MongoDB/english-words-definitions' -> 'english-words-definitions'

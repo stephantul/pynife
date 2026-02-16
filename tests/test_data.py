@@ -145,7 +145,7 @@ def test_get_datasets_columns_to_keep_and_limit_shards() -> None:
         assert length == 3
 
         # limit_shards restricts how many shards are counted
-        ds2, length2 = get_datasets([out], in_memory=True, limit_shards=1)
+        _, length2 = get_datasets([out], in_memory=True, limit_shards=1)
         # compute expected number of rows from the first shard file(s)
         shards = sorted((out / "train").glob("*.parquet"))
         expected = 0
