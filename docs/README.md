@@ -25,7 +25,7 @@ model = SentenceTransformer(model_name)
 
 dataset_name = "mandarjoshi/trivia_qa"
 dataset = load_dataset(dataset_name, "rc", split="train")
-dataset_iterator = (x['question'] for x in dataset)
+dataset_iterator = ({"text": x['question']} for x in dataset)
 
 output_directory = "my-trivia-qa"
 
