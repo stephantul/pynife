@@ -10,7 +10,7 @@ dependencies = [
     "sentence-transformers",
     "numpy",
     "datasets",
-    "skeletoken>=0.2.2",
+    "skeletoken>=0.3.0",
     "wandb",
     "jinja2",
 ]
@@ -55,10 +55,22 @@ ignore = [
     # Allow self and cls to be untyped, and allow Any type
     "ANN001", "ANN002", "ANN401",
     # Pydocstyle ignores
-    "D100", "D101", "D104", "D203", "D212", "D401",
+    "D100", "D101", "D104", "D203", "D213", "D401",
     # Allow use of f-strings in logging
     "G004"
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "E731"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "none"
+reportExplicitAny = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
 
 [tool.pydoclint]
 style = "google"
