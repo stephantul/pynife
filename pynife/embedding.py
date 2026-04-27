@@ -69,13 +69,15 @@ class TrainableStaticEmbedding(StaticEmbedding):
         """Tokenize the texts."""
         encodings = self.tokenizer.encode_batch(texts, add_special_tokens=False)
         encodings_ids = [torch.Tensor(encoding.ids[: self.max_seq_length]).long() for encoding in encodings]
+        encodings_ids_tensor = torch.cat(encodings_ids)
+        offsets = [0]
+        offsets.extend(list(map(len, encodings_ids[:-1])))
 
-        input_ids = torch.nn.utils.rnn.pad_sequence(encodings_ids, batch_first=True, padding_value=0)
-        return {"input_ids": input_ids}
+        return {"input_ids": encodings_ids_tensor, "offsets": torch.Tensor(offsets).long()}
 
     def forward(self, features: dict[str, torch.Tensor], **kwargs: Any) -> dict[str, torch.Tensor]:
         """Forward pass."""
-        x = self.embedding(features["input_ids"])
+        x = self.embedding(features["input_ids"], features["offsets"])
         features["sentence_embedding"] = x
         return features
 
